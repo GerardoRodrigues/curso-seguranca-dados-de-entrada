@@ -1,5 +1,5 @@
 // import { type Request, type Response } from 'express'
-import { Request, Response } from 'express';
+import { Request, Response } from 'express'
 import { Paciente } from './pacienteEntity.js'
 import { AppDataSource } from '../data-source.js'
 import { Endereco } from '../enderecos/enderecoEntity.js'
@@ -8,6 +8,7 @@ import { mapeiaPlano } from '../utils/planoSaudeUtils.js'
 import { Consulta } from '../consultas/consultaEntity.js'
 import { AppError, Status } from '../error/ErrorHandler.js'
 import { encryptPassword } from '../utils/senhaUtils.js'
+import { pacienteSchema } from './pacientesYupSchema.js'
 
 export const consultaPorPaciente = async (
   req: Request,
@@ -42,6 +43,8 @@ export const criarPaciente = async (
       ...pacienteData,
       nome: sanitizarNome(pacienteData.nome)
     }
+
+    await pacienteSchema.validate(pacienteSanitizado)
 
     let {
       cpf,
