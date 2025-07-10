@@ -6,6 +6,8 @@ import { AppError, Status } from '../error/ErrorHandler.js'
 import { Imagem } from '../imagem/imagemEntity.js'
 import { unlinkSync } from 'node:fs'
 import { extname, resolve, dirname } from 'path'
+import mime from 'mime-types'
+import fs from 'fs'
 
 const __filename = import.meta.url.substring(7)
 const __dirname = dirname(__filename)
@@ -35,6 +37,27 @@ export const criaImagem = async (req: Request, res: Response): Promise<Response>
     console.log(req.file)
     const { originalname: nome, size: tamanho, filename: key, url = '' } = req.file
 
+    const acceptedMimeTypes = ['image/jpeg', 'image/png']
+
+    const maxSize = 20 * 1024 * 1024 // 20MB
+
+    const ext = extname(req.file.originalname).slice(1).toLowerCase()
+    const mimetype = mime.lookup(ext)
+
+    if(!acceptedMimeTypes.includes(mimetype) || !mimetype) {
+      return res.status(400).json({ error: 'Formato de imagem inválido' })
+    }
+
+    const imageContent = fs.readFileSync(req.file.path, 'utf8')
+
+    if(/\<script[\s\S]*?\>/s.test(imageContent)) {
+      return res.status(400).json({ error: 'Imagem insegura' })
+    }
+
+    if(tamanho > maxSize) {
+      return res.status(400).json({ error: 'Imagem muito grande, máximo 20MB' })
+    }
+
     const imagem = new Imagem()
 
     imagem.nome = nome
@@ -51,7 +74,9 @@ export const criaImagem = async (req: Request, res: Response): Promise<Response>
     paciente.imagem = imagem
     await AppDataSource.manager.save(Paciente, paciente)
 
-    return res.json(imagem)
+    const {url: _url, ...imagemSemUrl} = imagem
+
+    return res.json(imagemSemUrl)
   } catch (error) {
     return res.status(400).json({ error: error.message })
   }
